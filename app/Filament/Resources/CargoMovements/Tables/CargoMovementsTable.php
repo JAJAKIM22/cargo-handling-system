@@ -16,37 +16,23 @@ class CargoMovementsTable
             ->columns([
                 TextColumn::make('reference')
                     ->searchable(),
-                TextColumn::make('type')
-                    ->searchable(),
-                TextColumn::make('tank_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('product_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('vessel_id')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('truck_id')
-                    ->numeric()
-                    ->sortable(),
+                TextColumn::make('type')->badge(),
+                TextColumn::make('tank.code')->label('Tank')->sortable(),
+                TextColumn::make('product.name')->label('Product'),
+                TextColumn::make('vessel.name')->label('Vessel')->placeholder('-'),
+                TextColumn::make('truck.plate_number')->label('Truck')->placeholder('-'),
                 TextColumn::make('declared_volume')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('loss_volume')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('net_volume')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('occurred_at')
-                    ->dateTime()
-                    ->sortable(),
+                TextColumn::make('net_volume')->numeric(3)->sortable(),
+                TextColumn::make('occurred_at')->dateTime()->sortable(),
                 TextColumn::make('processed_at')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('status')
-                    ->searchable(),
+                TextColumn::make('status')->badge(),
                 TextColumn::make('volume_before')
                     ->numeric()
                     ->sortable(),
