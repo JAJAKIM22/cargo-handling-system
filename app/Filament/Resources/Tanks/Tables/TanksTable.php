@@ -18,9 +18,13 @@ class TanksTable
                     ->searchable(),
                 TextColumn::make('name')
                     ->searchable(),
-                TextColumn::make('product_id')
-                    ->numeric()
+                TextColumn::make('product.name')
+                    ->label('Product')
+                    ->placeholder('Empty')
                     ->sortable(),
+                TextColumn::make('currentVessel.name')
+                    ->label('Vessel')
+                    ->placeholder('-'),
                 TextColumn::make('capacity')
                     ->numeric()
                     ->sortable(),
@@ -28,7 +32,12 @@ class TanksTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('status')
-                    ->searchable(),
+                    ->badge()
+                    ->color(fn($state) => match ($state->value) {
+                        'empty'   => 'gray',
+                        'partial' => 'warning',
+                        'full'    => 'danger',
+                    }),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

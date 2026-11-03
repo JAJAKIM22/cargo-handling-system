@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Tanks\Schemas;
 
+use App\Domain\Cargo\Enums\TankStatus;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -14,9 +16,16 @@ class TankForm
                 TextInput::make('code')
                     ->required(),
                 TextInput::make('name'),
-                TextInput::make('product_id')
-                    ->required()
-                    ->numeric(),
+                Select::make('product_id')
+                    ->relationship('product', 'name')
+                    ->searchable()
+                    ->preload(),            // no ->required(): a tank can be empty
+
+                Select::make('current_vessel_id')
+                    ->label('Current vessel')
+                    ->relationship('currentVessel', 'name')
+                    ->searchable()
+                    ->preload(),
                 TextInput::make('capacity')
                     ->required()
                     ->numeric(),
@@ -24,9 +33,7 @@ class TankForm
                     ->required()
                     ->numeric()
                     ->default(0),
-                TextInput::make('status')
-                    ->required()
-                    ->default('empty'),
+                Select::make('status')->options(TankStatus::class)
             ]);
     }
 }

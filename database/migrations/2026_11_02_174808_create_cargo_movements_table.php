@@ -27,13 +27,13 @@ return new class extends Migration
             $table->decimal('loss_volume', 14, 3)->default(0);   // 0.5% transit loss (discharge only)
             $table->decimal('net_volume', 14, 3);                // declared - loss; what hits the tank
 
-            // Time-series: occurred_at = when it really happened (sort key); processed_at = when we applied it.
+            // occurred_at = when it really happened (sort key); processed_at = when we applied it.
             $table->timestampTz('occurred_at', 3);
             $table->timestampTz('processed_at', 3)->nullable();
 
             // pending | applied | rejected
             $table->string('status', 20)->default('pending');
-            $table->text('failure_reason')->nullable();          // e.g. TankCapacityExceededException message
+            $table->text('failure_reason')->nullable();
 
             // Running balance snapshots: audit trail, and handy for replay/verification.
             $table->decimal('volume_before', 14, 3)->nullable();
@@ -41,7 +41,6 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // Replay a tank's history in true chronological order.
             $table->index(['tank_id', 'occurred_at']);
             $table->index('status');
             $table->index('occurred_at');
@@ -51,7 +50,6 @@ return new class extends Migration
         DB::statement("ALTER TABLE cargo_movements ADD CONSTRAINT cargo_movements_status_valid CHECK (status IN ('pending', 'applied', 'rejected'))");
         DB::statement('ALTER TABLE cargo_movements ADD CONSTRAINT cargo_movements_volumes_valid CHECK (declared_volume > 0 AND loss_volume >= 0 AND net_volume > 0)');
 
-        // A discharge must reference a vessel (and no truck); a delivery must reference a truck (and no vessel).
         DB::statement("ALTER TABLE cargo_movements ADD CONSTRAINT cargo_movements_source_matches_type CHECK (
             (type = 'discharge' AND vessel_id IS NOT NULL AND truck_id IS NULL)
             OR
