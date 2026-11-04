@@ -36,9 +36,7 @@ class VesselsTable
                 EditAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+              
             ]);
     }
 }

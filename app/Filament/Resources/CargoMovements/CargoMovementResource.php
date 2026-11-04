@@ -43,8 +43,8 @@ class CargoMovementResource extends Resource
     {
         return [
             'index' => ListCargoMovements::route('/'),
-            'create' => CreateCargoMovement::route('/create'),
-            'edit' => EditCargoMovement::route('/{record}/edit'),
+            // 'create' => CreateCargoMovement::route('/create'),
+            // 'edit' => EditCargoMovement::route('/{record}/edit'),
         ];
     }
 }
