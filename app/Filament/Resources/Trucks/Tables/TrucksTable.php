@@ -36,9 +36,7 @@ class TrucksTable
                 EditAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+               
             ]);
     }
 }
