@@ -31,6 +31,15 @@
                 <x-filament::badge color="danger">{{ count($rejected) }} rejected</x-filament::badge>
                 <x-filament::badge color="gray">{{ count($skipped) }} skipped (duplicates)</x-filament::badge>
             </div>
+
+            @if ($batchId)
+                <p style="margin-top:.75rem;font-size:.875rem;">
+                    Saved as batch #{{ $batchId }}.
+                    @if ($url = $this->batchUrl())
+                        <a href="{{ $url }}" style="text-decoration:underline;">View it in batch history</a>
+                    @endif
+                </p>
+            @endif
         </x-filament::section>
 
         @if (count($applied))

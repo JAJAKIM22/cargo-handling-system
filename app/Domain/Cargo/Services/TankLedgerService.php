@@ -86,6 +86,8 @@ final class TankLedgerService
                 'processed_at' => now(),
                 'status' => MovementStatus::Rejected,
                 'failure_reason' => $reason->getMessage(),
+                'recorded_by' => $data->recordedBy,
+                'ingest_batch_id' => $data->batchId,
             ]);
         } catch (QueryException) {
             return null;
@@ -194,6 +196,8 @@ final class TankLedgerService
             'status' => MovementStatus::Applied,
             'volume_before' => $before,
             'volume_after' => $after,
+            'recorded_by' => $data->recordedBy,
+            'ingest_batch_id' => $data->batchId,
         ]);
     }
 }

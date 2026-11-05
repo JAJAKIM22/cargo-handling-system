@@ -21,6 +21,8 @@ final readonly class MovementData
         public ?int $productId = null,
         public ?int $vesselId = null,
         public ?int $truckId = null,
+        public ?int $recordedBy = null,
+        public ?int $batchId = null,
     ) {
         if (trim($reference) === '') {
             throw new InvalidArgumentException('Reference is required.');
@@ -69,6 +71,8 @@ final readonly class MovementData
             productId: self::optionalInt($row['product_id'] ?? null),
             vesselId: self::optionalInt($row['vessel_id'] ?? null),
             truckId: self::optionalInt($row['truck_id'] ?? null),
+            recordedBy: self::optionalInt($row['recorded_by'] ?? null),
+            batchId: self::optionalInt($row['ingest_batch_id'] ?? null),
         );
     }
 

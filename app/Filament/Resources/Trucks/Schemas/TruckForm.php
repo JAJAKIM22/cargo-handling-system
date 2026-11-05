@@ -12,7 +12,10 @@ class TruckForm
         return $schema
             ->components([
                 TextInput::make('plate_number')
-                    ->required(),
+    ->required()
+    ->maxLength(20)
+    ->unique(ignoreRecord: true)
+    ->validationMessages(['unique' => 'A truck with this plate number is already registered.']),
                 TextInput::make('driver_name'),
                 TextInput::make('transporter'),
             ]);
