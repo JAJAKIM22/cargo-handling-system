@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Cargo\Actions\ProcessMovementBatch;
 use App\Models\CargoMovement;
+use App\Models\IngestBatch;
 use App\Models\Product;
 use App\Models\Tank;
 use App\Models\Truck;
@@ -12,6 +13,7 @@ use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use JsonException;
 use Livewire\WithFileUploads;
@@ -27,7 +29,11 @@ class IngestMovements extends Page
     /** Livewire temporary upload (JSON file). */
     public $upload = null;
 
+    public string $sourceLabel = 'Pasted JSON';
+
     public bool $processed = false;
+
+    public ?int $batchId = null;
 
     /** @var array<int, array<string, string>> In the order they were actually applied. */
     public array $applied = [];
@@ -60,12 +66,24 @@ class IngestMovements extends Page
         }
 
         $this->json = (string) $this->upload->get();
+        $this->sourceLabel = $this->upload->getClientOriginalName();
         $this->upload = null;
+    }
+
+    public function batchUrl(): ?string
+    {
+        $resource = \App\Filament\Resources\IngestBatches\IngestBatchResource::class;
+
+        if ($this->batchId === null || ! class_exists($resource) || ! $resource::hasPage('view')) {
+            return null;
+        }
+
+        return $resource::getUrl('view', ['record' => $this->batchId]);
     }
 
     public function process(): void
     {
-        $this->reset(['applied', 'rejected', 'skipped', 'processed']);
+        $this->reset(['applied', 'rejected', 'skipped', 'processed', 'batchId']);
 
         if (trim($this->json) === '') {
             $this->warn('Nothing to process', 'Paste a JSON array of movements or upload a .json file.');
@@ -91,6 +109,19 @@ class IngestMovements extends Page
             return;
         }
 
+        // Every run is recorded, so rejections can be reviewed later from batch history.
+        $batch = IngestBatch::create([
+            'user_id' => Auth::id(),
+            'label' => $this->sourceLabel,
+            'total_rows' => count($rows),
+        ]);
+
+        // Our keys come last so a payload cannot spoof who recorded it or which batch it belongs to.
+        $rows = array_map(
+            fn (array $row): array => [...$row, 'recorded_by' => Auth::id(), 'ingest_batch_id' => $batch->id],
+            $rows,
+        );
+
         $result = app(ProcessMovementBatch::class)->handleRows($rows);
 
         $this->applied = collect($result->applied)
@@ -113,6 +144,16 @@ class IngestMovements extends Page
         );
 
         $this->skipped = array_map(fn (string $ref): array => ['reference' => $ref], $result->skipped);
+
+        $batch->update([
+            'applied_count' => $result->appliedCount(),
+            'rejected_count' => $result->rejectedCount(),
+            'skipped_count' => $result->skippedCount(),
+            'rejected' => $this->rejected,
+            'skipped' => $this->skipped,
+        ]);
+
+        $this->batchId = $batch->id;
         $this->processed = true;
 
         $summary = sprintf(
@@ -123,7 +164,7 @@ class IngestMovements extends Page
         );
 
         Notification::make()
-            ->title('Batch processed')
+            ->title("Batch #{$batch->id} processed")
             ->body($summary)
             ->color($result->isFullySuccessful() ? 'success' : 'warning')
             ->icon($result->isFullySuccessful() ? 'heroicon-o-check-circle' : 'heroicon-o-exclamation-triangle')
@@ -154,22 +195,19 @@ class IngestMovements extends Page
         $at = fn (int $h, int $m = 0): string => now()->startOfDay()->setTime($h, $m)->toDateTimeString();
 
         $rows = [
-            // Arrives FIRST but happened LAST (11:00): only valid once the 09:00 discharge is applied.
             ['reference' => "DEMO-{$tag}-DEL-1", 'type' => 'delivery', 'tank_id' => $tank->id,
                 'truck_id' => $truck->id, 'declared_volume' => '400', 'occurred_at' => $at(11)],
-            // 3000 t into a 3000 t tank that already has 995 t after DIS-1: capacity overflow -> rejected.
             ['reference' => "DEMO-{$tag}-DIS-2", 'type' => 'discharge', 'tank_id' => $tank->id,
                 'product_id' => $cpol->id, 'vessel_id' => $oleinStar->id, 'declared_volume' => '3000', 'occurred_at' => $at(10)],
-            // Happened FIRST (09:00): 1000 t declared, 995 t landed after the 0.5% loss.
             ['reference' => "DEMO-{$tag}-DIS-1", 'type' => 'discharge', 'tank_id' => $tank->id,
                 'product_id' => $cpol->id, 'vessel_id' => $oleinStar->id, 'declared_volume' => '1000', 'occurred_at' => $at(9)],
-            // TK-01 holds CPO from another vessel: same product, different vessel -> rejected.
             ['reference' => "DEMO-{$tag}-DIS-3", 'type' => 'discharge', 'tank_id' => $loadedCpoTank->id,
                 'product_id' => $cpo->id, 'vessel_id' => $golden->id, 'declared_volume' => '100', 'occurred_at' => $at(10, 30)],
         ];
 
         $this->json = json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        $this->reset(['applied', 'rejected', 'skipped', 'processed']);
+        $this->sourceLabel = 'Demo batch';
+        $this->reset(['applied', 'rejected', 'skipped', 'processed', 'batchId']);
     }
 
     private function fail(string $title, string $body): void

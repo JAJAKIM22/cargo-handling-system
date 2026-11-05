@@ -2,47 +2,22 @@
 
 namespace App\Observers;
 
+use App\Domain\Cargo\Exceptions\LedgerImmutableException;
 use App\Models\CargoMovement;
 
+/**
+ * Enforces the append-only ledger at the model level.
+ * Inserts are allowed (via TankLedgerService); updates and deletes are not.
+ */
 class CargoMovementObserver
 {
-    /**
-     * Handle the CargoMovement "created" event.
-     */
-    public function created(CargoMovement $cargoMovement): void
+    public function updating(CargoMovement $movement): never
     {
-        //
+        throw LedgerImmutableException::forUpdate($movement);
     }
 
-    /**
-     * Handle the CargoMovement "updated" event.
-     */
-    public function updated(CargoMovement $cargoMovement): void
+    public function deleting(CargoMovement $movement): never
     {
-        //
-    }
-
-    /**
-     * Handle the CargoMovement "deleted" event.
-     */
-    public function deleted(CargoMovement $cargoMovement): void
-    {
-        //
-    }
-
-    /**
-     * Handle the CargoMovement "restored" event.
-     */
-    public function restored(CargoMovement $cargoMovement): void
-    {
-        //
-    }
-
-    /**
-     * Handle the CargoMovement "force deleted" event.
-     */
-    public function forceDeleted(CargoMovement $cargoMovement): void
-    {
-        //
+        throw LedgerImmutableException::forDelete($movement);
     }
 }
