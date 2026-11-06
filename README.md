@@ -7,7 +7,7 @@ A Laravel + FilamentPHP control dashboard for a bulk liquid port terminal. It tr
 
 
 - **Live demo:** `https://cargo-handling-system-production-mo5xhv.laravel.cloud/admin`
-- **Login:** `admin@gmail.com` / `password`
+- **Login:** `admin@gmail.com` / `Admin@2030`
 - **Repository:** `https://github.com/JAJAKIM22/cargo-handling-system`
 
 
