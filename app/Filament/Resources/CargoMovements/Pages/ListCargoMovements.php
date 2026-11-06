@@ -10,12 +10,14 @@ use App\Models\Product;
 use App\Models\Tank;
 use App\Models\Truck;
 use App\Models\Vessel;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -31,21 +33,37 @@ class ListCargoMovements extends ListRecords
         ];
     }
 
+    /** "TK-01: Crude Palm Oil · MV Palm Voyager (3200.000 of 5000.000 t)" */
     private static function tankOptions(): array
-{
-    return Tank::query()
-        ->with(['product', 'currentVessel'])
-        ->orderBy('code')
-        ->get()
-        ->mapWithKeys(function (Tank $t): array {
-            $cargo = $t->product
-                ? $t->product->name.' · '.($t->currentVessel?->name ?? 'unknown vessel')
-                : 'empty';
+    {
+        return Tank::query()
+            ->with(['product', 'currentVessel'])
+            ->orderBy('code')
+            ->get()
+            ->mapWithKeys(function (Tank $t): array {
+                $cargo = $t->product
+                    ? $t->product->name.' · '.($t->currentVessel?->name ?? 'unknown vessel')
+                    : 'empty';
 
-            return [$t->id => "{$t->code}: {$cargo} ({$t->current_volume} of {$t->capacity} t)"];
-        })
-        ->all();
-}
+                return [$t->id => "{$t->code}: {$cargo} ({$t->current_volume} of {$t->capacity} t)"];
+            })
+            ->all();
+    }
+
+    /** "KDA 101A (last delivery 06 Nov 11:00)": information only, not an availability rule. */
+    private static function truckOptions(): array
+    {
+        return Truck::query()
+            ->withMax(['movements as last_delivery_at' => fn ($q) => $q->where('status', 'applied')], 'occurred_at')
+            ->orderBy('plate_number')
+            ->get()
+            ->mapWithKeys(fn (Truck $t): array => [
+                $t->id => $t->plate_number.($t->last_delivery_at
+                    ? ' (last delivery '.Carbon::parse($t->last_delivery_at)->format('d M H:i').')'
+                    : ' (no deliveries yet)'),
+            ])
+            ->all();
+    }
 
     private function recordDischargeAction(): Action
     {
@@ -85,7 +103,7 @@ class ListCargoMovements extends ListRecords
             ])
             ->action(function (array $data, Action $action): void {
                 try {
-                    $movement = app(RecordDischarge::class)->handle($data);
+                    $movement = app(RecordDischarge::class)->handle([...$data, 'recorded_by' => Auth::id()]);
                 } catch (CargoException|InvalidArgumentException $e) {
                     Notification::make()
                         ->title('Discharge rejected')
@@ -120,20 +138,12 @@ class ListCargoMovements extends ListRecords
                     ->default(fn (): string => 'DEL-'.Str::upper(Str::random(8))),
                 Select::make('tank_id')
                     ->label('Tank')
-                    ->options(fn (): array => Tank::query()->with('product')->orderBy('code')->get()
-                        ->mapWithKeys(fn (Tank $t): array => [
-                            $t->id => sprintf(
-                                '%s: %s (%s t available)',
-                                $t->code,
-                                $t->product?->name ?? 'empty',
-                                $t->current_volume,
-                            ),
-                        ])->all())
+                    ->options(fn (): array => self::tankOptions())
                     ->searchable()
                     ->required(),
                 Select::make('truck_id')
                     ->label('Truck')
-                    ->options(fn (): array => Truck::query()->orderBy('plate_number')->pluck('plate_number', 'id')->all())
+                    ->options(fn (): array => self::truckOptions())
                     ->searchable()
                     ->required(),
                 TextInput::make('declared_volume')
@@ -148,7 +158,7 @@ class ListCargoMovements extends ListRecords
             ])
             ->action(function (array $data, Action $action): void {
                 try {
-                    $movement = app(RecordDelivery::class)->handle($data);
+                    $movement = app(RecordDelivery::class)->handle([...$data, 'recorded_by' => Auth::id()]);
                 } catch (CargoException|InvalidArgumentException $e) {
                     Notification::make()
                         ->title('Delivery rejected')
