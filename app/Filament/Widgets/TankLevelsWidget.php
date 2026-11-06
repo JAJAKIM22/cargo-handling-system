@@ -10,6 +10,8 @@ use Filament\Widgets\TableWidget;
 
 class TankLevelsWidget extends TableWidget
 {
+    protected static ?int $sort = 2;
+
     protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
